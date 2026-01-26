@@ -25,7 +25,7 @@ class SelfAttention(nn.Module):
         keys = keys.reshape(N, key_len, self.heads, self.embedding_numbers_per_head)
         queries = queries.reshape(N, query_len, self.heads, self.embedding_numbers_per_head)
 
-        energy = torch.einsum("nqhd,nkhd->nhqk", [queries, keys])  # Einstein summation for matrix multiplication
+        energy = torch.einsum("nqhe,nkhe->nhqk", [queries, keys])  # Einstein summation for matrix multiplication
         # queries shape: (N, query_len, heads, embedding_numbers_per_head)
         # keys shape: (N, key_len, heads, embedding_numbers_per_head)
         # energy shape: (N, heads, query_len, key_len)
@@ -45,3 +45,26 @@ class SelfAttention(nn.Module):
         out = self.fc_out(out)  # final linear layer
         return out
 
+class TransformerBlock(nn.Module):
+    def __init__(self, embed_size, heads, dropout, forward_expansion):
+        super().__init__()
+        self.attention = SelfAttention(embed_size, heads)
+        self.norm1 = nn.LayerNorm(embed_size)
+        self.norm2 = nn.LayerNorm(embed_size)
+
+        self.feed_forward = nn.Sequential(
+            nn.Linear(embed_size, forward_expansion * embed_size),
+            nn.ReLU(),
+            nn.Linear(forward_expansion * embed_size, embed_size)
+        )
+
+        self.dropout = nn.Dropout(dropout)
+
+    def forward(self, value, key, query, mask):
+        attention = self.attention(value, key, query, mask)
+
+        # Add & Norm
+        x = self.dropout(self.norm1(attention + query))
+        forward = self.feed_forward(x)
+        out = self.dropout(self.norm2(forward + x))
+        return out
