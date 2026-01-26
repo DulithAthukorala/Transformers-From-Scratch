@@ -17,6 +17,11 @@ class SelfAttention(nn.Module):
         self.fc_out = nn.Linear(heads * self.embedding_numbers_per_head, embed_size)  # final output linear layer
 
     def forward(self, values, keys, queries, mask):
+        ''' 
+        mostly values, keys, queries are the input tensor
+        But in cross attention, queries come from decoder, keys and values come from encoder, in order to handle that values, keys, queries are passed separately
+
+        '''
         N = queries.shape[0]  # (B, seq_length, embed_size) -> B (how many sequences we have in a batch)
         value_len, key_len, query_len = values.shape[1], keys.shape[1], queries.shape[1] # (B, seq_length, embed_size) -> seq_length
 
