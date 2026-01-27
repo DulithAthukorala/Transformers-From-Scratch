@@ -11,11 +11,11 @@ class SelfAttention(nn.Module):  # Does the normal/masked Multi-Head Self-Attent
 
         assert (self.embedding_numbers_per_head * heads == embed_size), "Embedding size needs to be divisible by heads"
 
-        self.queries = nn.Linear(self.embedding_numbers_per_head, self.embedding_numbers_per_head, bias=False) # nn.Linear -> initialize random weight matrix
-        self.keys = nn.Linear(self.embedding_numbers_per_head, self.embedding_numbers_per_head, bias=False)
-        self.values = nn.Linear(self.embedding_numbers_per_head, self.embedding_numbers_per_head, bias=False)
-        self.fc_out = nn.Linear(heads * self.embedding_numbers_per_head, embed_size)  # final output linear layer
-
+        self.values = nn.Linear(embed_size, embed_size)
+        self.keys = nn.Linear(embed_size, embed_size)
+        self.queries = nn.Linear(embed_size, embed_size)
+        self.fc_out = nn.Linear(embed_size, embed_size)
+        
     def forward(self, values, keys, queries, mask):
         ''' 
         mostly values, keys, queries are the input tensor
@@ -24,6 +24,10 @@ class SelfAttention(nn.Module):  # Does the normal/masked Multi-Head Self-Attent
         '''
         N = queries.shape[0]  # (B, seq_length, embed_size) -> B (how many sequences we have in a batch)
         value_len, key_len, query_len = values.shape[1], keys.shape[1], queries.shape[1] # (B, seq_length, embed_size) -> seq_length
+
+        values = self.values(values)  # (N, value_len, embed_size)
+        keys = self.keys(keys)  # (N, key_len, embed_size)
+        queries = self.queries(queries)  # (N, query_len, embed_size
 
         # Split the embedding into self.heads different pieces
         values = values.reshape(N, value_len, self.heads, self.embedding_numbers_per_head)
@@ -102,8 +106,8 @@ class Encoder(nn.Module):
                     dropout=dropout,
                     forward_expansion=forward_expansion,
                 )
-            ]
             for _ in range(num_layers)
+            ]
         )
 
         self.dropout = nn.Dropout(dropout)
