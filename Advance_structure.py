@@ -2,7 +2,7 @@ import torch
 import torch.nn as nn
 
 
-class SelfAttention(nn.Module):
+class SelfAttention(nn.Module):  # Does the normal/masked Multi-Head Self-Attention
     def __init__(self, embed_size, heads):
         super().__init__()
         self.embed_size = embed_size  # word embedding size (how many numbers represent a word)
@@ -50,7 +50,7 @@ class SelfAttention(nn.Module):
         out = self.fc_out(out)  # final linear layer
         return out
 
-class TransformerBlock(nn.Module):
+class TransformerBlock(nn.Module): # Attention + add & norm + feedforward + add & norm
     def __init__(self, embed_size, heads, dropout, forward_expansion):
         super().__init__()
         self.attention = SelfAttention(embed_size, heads)
@@ -66,11 +66,13 @@ class TransformerBlock(nn.Module):
         self.dropout = nn.Dropout(dropout)
 
     def forward(self, value, key, query, mask):
+        # Attention
         attention = self.attention(value, key, query, mask)
-
         # Add & Norm
         x = self.dropout(self.norm1(attention + query)) # x = self.norm1(query + self.dropout(attention))
+        # Feed Forward
         forward = self.feed_forward(x)
+        # Add & Norm
         out = self.dropout(self.norm2(forward + x)) # out = self.norm2(x + self.dropout(forward))
         return out
 
@@ -85,14 +87,14 @@ class Encoder(nn.Module):
         device, 
         forward_expansion, # Feedforward hidden layer size
         dropout, # dropout rate
-        max_lengthgth, # maximum length of input sentence (for positional encoding)
+        max_length, # maximum length of input sentence (for positional encoding)
     ):
         super().__init__()
         self.embed_size = embed_size
         self.device = device
         self.word_embedding = nn.Embedding(src_vocab_size, embed_size)  # create a lookup table for word embeddings (src_vocab_size, embed_size)
-        self.position_embedding = nn.Embedding(max_lengthgth, embed_size)  # position info for each token/word (max_length, embed_size) # use stat Q 
-        self.layers = nn.ModuleList(
+        self.position_embedding = nn.Embedding(max_length, embed_size)  # position info for each token/word (max_length, embed_size) # use stat Q 
+        self.layers = nn.ModuleList( # ModuleList = “tell PyTorch these are real layers”
             [
                 TransformerBlock(
                     embed_size,
@@ -113,6 +115,25 @@ class Encoder(nn.Module):
         out = self.dropout(self.word_embedding(x) + self.position_embedding(positions))  # add word embeddings and position embeddings
 
         for layer in self.layers:
-            out = layer(out, out, out, mask)
+            out = layer(out, out, out, mask) # In Encoder: value, key, query are all the same
 
+        return out
+
+class DecoderBlock(nn.Module):
+    def __init__(self, embed_size, heads, forward_expansion, dropout, device):
+        super().__init__()
+        self.self_attention = SelfAttention(embed_size, heads) # Masked Multi-Head Self-Attention
+        self.norm = nn.LayerNorm(embed_size) # Layer Normalization
+        self.transformer_block = TransformerBlock(
+            embed_size, heads, dropout, forward_expansion
+        )
+        self.dropout = nn.Dropout(dropout)
+    
+    def forward(self, x, value, key, src_mask, trg_mask):
+        # Masked Multi-Head Self-Attention
+        attention = self.self_attention(x, x, x, trg_mask)
+        x = self.dropout(self.norm(attention + x))
+
+        # Encoder-Decoder Attention + Feedforward + Add & Norm
+        out = self.transformer_block(value, key, x, src_mask)
         return out
