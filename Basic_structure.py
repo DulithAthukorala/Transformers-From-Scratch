@@ -108,14 +108,14 @@ class DecoderOnlyTransformer(L.LightningModule):
 
     def forward(self, token_ids): # token_id -> where the token in the vocabulary
         word_embeddings = self.word_embedding(token_ids) 
-        positional_encoded = self.pe(word_embeddings)
+        positional_encoded_word_embeddings = self.pe(word_embeddings)
 
         mask = torch.tril(torch.ones((token_ids.size(dim=0), token_ids.size(dim=0))))
         mask = mask == 0  # convert to boolean mask
 
-        self_attention_values = self.self_attention(positional_encoded, positional_encoded, positional_encoded, mask=mask)
+        self_attention_values = self.self_attention(positional_encoded_word_embeddings, positional_encoded_word_embeddings, positional_encoded_word_embeddings, mask=mask)
 
-        residual_connection_values = positional_encoded + self_attention_values
+        residual_connection_values = positional_encoded_word_embeddings + self_attention_values # Basic -> No Dropout, No LayerNorm
 
         fc_layer_output = self.fc_layer(residual_connection_values)
 
@@ -132,7 +132,7 @@ class DecoderOnlyTransformer(L.LightningModule):
         return loss
 
 
-model = DecoderOnlyTransformer(src_vocab_size=len(token_to_id), embed_size=2, max_length=6)
+model = DecoderOnlyTransformer(src_vocab_size=len(token_to_id), max_length=6, embed_size=2)
 trainer = L.Trainer(max_epochs=30)
 trainer.fit(model, train_dataloaders=dataloader)
 
@@ -149,8 +149,8 @@ predictions = model(model_input)
 predicted_id = torch.tensor([torch.argmax(predictions[-1, :])])
 predicted_ids = predicted_id
 
-max_lengthgth = 6
-for i in range(input_length, max_lengthgth):
+max_length = 6
+for i in range(input_length, max_length):
     if predicted_id == token_to_id["<EOS>"]:
         break
 
