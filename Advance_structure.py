@@ -69,7 +69,50 @@ class TransformerBlock(nn.Module):
         attention = self.attention(value, key, query, mask)
 
         # Add & Norm
-        x = self.dropout(self.norm1(attention + query))
+        x = self.dropout(self.norm1(attention + query)) # x = self.norm1(query + self.dropout(attention))
         forward = self.feed_forward(x)
-        out = self.dropout(self.norm2(forward + x))
+        out = self.dropout(self.norm2(forward + x)) # out = self.norm2(x + self.dropout(forward))
+        return out
+
+
+class Encoder(nn.Module):
+    def __init__(
+        self,
+        src_vocab_size, # how many unique words in the vocabulary
+        embed_size,  # how many numbers represent a word/token
+        num_layers, # number of transformer block layers (Layers learn from previous layer's output, syntax -> phrase structure -> meaning)
+        heads, # heads learn different stuff from the same senetence
+        device, 
+        forward_expansion, # Feedforward hidden layer size
+        dropout, # dropout rate
+        max_lengthgth, # maximum length of input sentence (for positional encoding)
+    ):
+        super().__init__()
+        self.embed_size = embed_size
+        self.device = device
+        self.word_embedding = nn.Embedding(src_vocab_size, embed_size)  # create a lookup table for word embeddings (src_vocab_size, embed_size)
+        self.position_embedding = nn.Embedding(max_lengthgth, embed_size)  # position info for each token/word (max_length, embed_size) # use stat Q 
+        self.layers = nn.ModuleList(
+            [
+                TransformerBlock(
+                    embed_size,
+                    heads,
+                    dropout=dropout,
+                    forward_expansion=forward_expansion,
+                )
+            ]
+            for _ in range(num_layers)
+        )
+
+        self.dropout = nn.Dropout(dropout)
+
+    def forward(self, x, mask):
+        N, seq_length = x.shape
+        positions = torch.arange(0, seq_length).expand(N, seq_length).to(self.device)  # create position tensor
+
+        out = self.dropout(self.word_embedding(x) + self.position_embedding(positions))  # add word embeddings and position embeddings
+
+        for layer in self.layers:
+            out = layer(out, out, out, mask)
+
         return out
