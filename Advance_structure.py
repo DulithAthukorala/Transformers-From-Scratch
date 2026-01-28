@@ -15,7 +15,7 @@ class SelfAttention(nn.Module):  # Does the normal/masked Multi-Head Self-Attent
         self.keys = nn.Linear(embed_size, embed_size)
         self.queries = nn.Linear(embed_size, embed_size)
         self.fc_out = nn.Linear(embed_size, embed_size)
-        
+
     def forward(self, values, keys, queries, mask):
         ''' 
         mostly values, keys, queries are the input tensor
@@ -237,7 +237,7 @@ class Transformer(nn.Module):
         return trg_mask.to(self.device)
 
     def forward(self, src, trg):
-        src_mask = self.make_src_mask(src)
+        src_mask = self.make_src_mask(src) # mask added
         trg_mask = self.make_trg_mask(trg)
         enc_src = self.encoder(src, src_mask)
         out = self.decoder(trg, enc_src, src_mask, trg_mask)
