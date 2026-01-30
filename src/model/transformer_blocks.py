@@ -5,56 +5,85 @@ from src.model.attention import SelfAttention
 
 
 class TransformerBlock(nn.Module):
-    def __init__(self, embed_size: int, heads: int, dropout: float, forward_expansion: int):
+    def __init__(self, embed_size, heads, dropout, forward_expansion, pre_norm=True):
         super().__init__()
 
-        self.attention = SelfAttention(embed_size, heads)  # normal (or masked if mask passed)
+        self.pre_norm = pre_norm
+
+        self.attention = SelfAttention(embed_size, heads, dropout=dropout)
+
         self.norm1 = nn.LayerNorm(embed_size)
         self.norm2 = nn.LayerNorm(embed_size)
 
-        self.feed_forward = nn.Sequential(
-            nn.Linear(embed_size, forward_expansion * embed_size),
-            nn.ReLU(),
-            nn.Linear(forward_expansion * embed_size, embed_size),
-        )
+        hidden = forward_expansion * embed_size
+        self.fc1 = nn.Linear(embed_size, hidden)
+        self.act = nn.ReLU()
+        self.fc2 = nn.Linear(hidden, embed_size)
 
         self.dropout = nn.Dropout(dropout)
 
-    def forward(
-        self,
-        value: torch.Tensor,
-        key: torch.Tensor,
-        query: torch.Tensor,
-        mask: torch.Tensor | None,
-    ) -> torch.Tensor:
-        attention = self.attention(value, key, query, mask)
-        x = self.norm1(query + self.dropout(attention))
+    def forward(self, value, key, query, mask=None, return_attention=False):
+        # Pre-Norm variant (more stable): LN -> sublayer -> residual
+        if self.pre_norm:
+            q = self.norm1(query)
+            if return_attention:
+                attn_out, attn = self.attention(value, key, q, mask, return_attention=True)
+            else:
+                attn_out = self.attention(value, key, q, mask)
 
-        forward = self.feed_forward(x)
-        out = self.norm2(x + self.dropout(forward))
+            x = query + self.dropout(attn_out)
 
+            y = self.norm2(x)
+            ff = self.fc2(self.dropout(self.act(self.fc1(y))))
+            out = x + self.dropout(ff)
+
+            if return_attention:
+                return out, attn
+            return out
+
+        # Post-Norm variant (paper-ish): sublayer -> residual -> LN
+        if return_attention:
+            attn_out, attn = self.attention(value, key, query, mask, return_attention=True)
+        else:
+            attn_out = self.attention(value, key, query, mask)
+
+        x = self.norm1(query + self.dropout(attn_out))
+
+        ff = self.fc2(self.dropout(self.act(self.fc1(x))))
+        out = self.norm2(x + self.dropout(ff))
+
+        if return_attention:
+            return out, attn
         return out
 
 
 class DecoderBlock(nn.Module):
-    def __init__(self, embed_size: int, heads: int, forward_expansion: int, dropout: float):
+    def __init__(self, embed_size, heads, forward_expansion, dropout, pre_norm=True):
         super().__init__()
 
-        self.self_attention = SelfAttention(embed_size, heads)  # masked via trg_mask
+        self.pre_norm = pre_norm
+
+        self.self_attention = SelfAttention(embed_size, heads, dropout=dropout)
+
         self.norm = nn.LayerNorm(embed_size)
-        self.transformer_block = TransformerBlock(embed_size, heads, dropout, forward_expansion)
         self.dropout = nn.Dropout(dropout)
 
-    def forward(
-        self,
-        x: torch.Tensor,
-        value: torch.Tensor,
-        key: torch.Tensor,
-        src_mask: torch.Tensor | None,
-        trg_mask: torch.Tensor | None,
-    ) -> torch.Tensor:
-        attention = self.self_attention(x, x, x, trg_mask)
-        query = self.norm(x + self.dropout(attention))
+        self.transformer_block = TransformerBlock(
+            embed_size=embed_size,
+            heads=heads,
+            dropout=dropout,
+            forward_expansion=forward_expansion,
+            pre_norm=pre_norm,
+        )
+
+    def forward(self, x, value, key, src_mask=None, trg_mask=None):
+        if self.pre_norm:
+            q = self.norm(x)
+            self_out = self.self_attention(q, q, q, trg_mask)
+            query = x + self.dropout(self_out)
+        else:
+            self_out = self.self_attention(x, x, x, trg_mask)
+            query = self.norm(x + self.dropout(self_out))
 
         out = self.transformer_block(value, key, query, src_mask)
         return out

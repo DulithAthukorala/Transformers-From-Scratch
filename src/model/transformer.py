@@ -22,12 +22,14 @@ class Transformer(nn.Module):
     ):
         super().__init__()
 
+        self.device = torch.device(device) if not isinstance(device, torch.device) else device
+
         self.encoder = Encoder(
             src_vocab_size=src_vocab_size,
             embed_size=embed_size,
             num_layers=num_layers,
             heads=heads,
-            device=device,
+            device=self.device,
             forward_expansion=forward_expansion,
             dropout=dropout,
             max_length=max_length,
@@ -40,33 +42,39 @@ class Transformer(nn.Module):
             heads=heads,
             forward_expansion=forward_expansion,
             dropout=dropout,
-            device=device,
+            device=self.device,
             max_length=max_length,
         )
 
         self.src_pad_idx = src_pad_idx
         self.trg_pad_idx = trg_pad_idx
-        self.device = device
 
     def make_src_mask(self, src: torch.Tensor):
-        # 1 = keep, 0 = mask out (matches masked_fill(mask == 0, ...))
-        src_mask = (src != self.src_pad_idx).unsqueeze(1).unsqueeze(2)
-        return src_mask.to(self.device)
+        # (N, 1, 1, src_len) with True = keep, False = block
+        return (src != self.src_pad_idx).unsqueeze(1).unsqueeze(2)
 
     def make_trg_mask(self, trg: torch.Tensor):
         N, trg_len = trg.shape
 
-        causal = torch.tril(torch.ones((trg_len, trg_len), device=self.device)).expand(
-            N, 1, trg_len, trg_len
-        )  # (N,1,trg_len,trg_len)
+        # causal: (1, 1, trg_len, trg_len)
+        causal = torch.tril(torch.ones((trg_len, trg_len), device=trg.device, dtype=torch.bool))
+        causal = causal.unsqueeze(0).unsqueeze(0)
 
-        pad = (trg != self.trg_pad_idx).unsqueeze(1).unsqueeze(2)  # (N,1,1,trg_len)
+        # pad: (N, 1, 1, trg_len)
+        pad = (trg != self.trg_pad_idx).unsqueeze(1).unsqueeze(2)
 
-        return causal * pad  # still 1s and 0s, matches mask == 0 logic
+        # combined: (N, 1, trg_len, trg_len)
+        return causal & pad
 
     def forward(self, src: torch.Tensor, trg: torch.Tensor):
-        src_mask = self.make_src_mask(src)
-        trg_mask = self.make_trg_mask(trg)
+        if src.dim() != 2 or trg.dim() != 2:
+            raise ValueError(f"src and trg must be (N, L). Got src{tuple(src.shape)}, trg{tuple(trg.shape)}")
+
+        src = src.to(self.device)
+        trg = trg.to(self.device)
+
+        src_mask = self.make_src_mask(src)  # bool mask
+        trg_mask = self.make_trg_mask(trg)  # bool mask
 
         enc_out = self.encoder(src, src_mask)
         out = self.decoder(trg, enc_out, src_mask, trg_mask)
