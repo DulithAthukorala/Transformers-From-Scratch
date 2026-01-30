@@ -1,63 +1,51 @@
-from __future__ import annotations
-
-import math
 import torch
+import torch.nn as nn
 
 
-class ScaledDotProductAttention:
-    """
-    Implements:
-        softmax((QK^T)/sqrt(d_k) + mask) V
+class SelfAttention(nn.Module):
+    def __init__(self, embed_size: int, heads: int):
+        super().__init__()
+        self.embed_size = embed_size
+        self.heads = heads
+        self.head_dim = embed_size // heads
 
-    Expected shapes:
-      Q: (B, H, Lq, d_k)
-      K: (B, H, Lk, d_k)
-      V: (B, H, Lv, d_k)
-      mask (optional): broadcastable to (B, H, Lq, Lk)
+        if self.head_dim * heads != embed_size:
+            raise ValueError("embed_size must be divisible by heads")
 
-    B = batch size
-    H = number of heads
-    Lq / Lk / Lv = query/key/value sequence length
-    d_k = head dimension
-      
-    """
+        self.values = nn.Linear(embed_size, embed_size)
+        self.keys = nn.Linear(embed_size, embed_size)
+        self.queries = nn.Linear(embed_size, embed_size)
+        self.fc_out = nn.Linear(embed_size, embed_size)
 
-    def __call__(self, Q, K, V, mask=None) -> tuple[torch.Tensor, torch.Tensor]:
-        if Q.dim() != 4 or K.dim() != 4 or V.dim() != 4:
-            raise ValueError(f"Q,K,V must be 4D tensors. Got Q{tuple(Q.shape)}, K{tuple(K.shape)}, V{tuple(V.shape)}")
+    def forward(
+        self,
+        values: torch.Tensor,
+        keys: torch.Tensor,
+        queries: torch.Tensor,
+        mask: torch.Tensor | None,
+    ):
+        N = queries.shape[0]
+        value_len = values.shape[1]
+        key_len = keys.shape[1]
+        query_len = queries.shape[1]
 
-        Bq, Hq, Lq, dk_q = Q.shape
-        Bk, Hk, Lk, dk_k = K.shape
-        Bv, Hv, Lv, dk_v = V.shape
+        values = self.values(values)
+        keys = self.keys(keys)
+        queries = self.queries(queries)
 
-        if (Bq, Hq) != (Bk, Hk) or (Bq, Hq) != (Bv, Hv):
-            raise ValueError("Batch/head dims must match for Q,K,V.")
+        values = values.reshape(N, value_len, self.heads, self.head_dim)
+        keys = keys.reshape(N, key_len, self.heads, self.head_dim)
+        queries = queries.reshape(N, query_len, self.heads, self.head_dim)
 
-        if dk_q != dk_k or dk_q != dk_v:
-            raise ValueError("Last Head dim (d_k) must match for Q,K,V.")
+        energy = torch.einsum("nqhd,nkhd->nhqk", queries, keys)
 
-        if Lk != Lv: 
-            '''
-            queries can ask about a different sequence,
-            but Lk must equal Lv because every key must have a value to read from.
-            '''
-            raise ValueError("K and V must have same sequence length (L_k).") 
-
-        d_k = dk_q  # head dimension (bcz all are same)
-
-        # --- 1) compute raw attention scores ---
-        scores = (Q @ K.transpose(-2, -1)) / math.sqrt(d_k)
-
-        # --- 2) apply mask (if provided) ---
         if mask is not None:
-            scores = scores + mask
+            energy = energy.masked_fill(~mask, float("-1e20"))
 
-        # --- 3) softmax over keys (last dimension) ---
-        attn = torch.softmax(scores, dim=-1)
+        attention = torch.softmax(energy / (self.head_dim ** 0.5), dim=-1)
 
-        # --- 4) weighted sum of values ---
-        out = attn @ V
+        out = torch.einsum("nhqk,nkhd->nqhd", attention, values)
+        out = out.reshape(N, query_len, self.heads * self.head_dim)
 
-        # out: (B, H, L_q, d_k) --> for the model
-        # attn: (B, H, L_q, L_k) --> for visualization / analysis purposes
-        return out, attn
+        out = self.fc_out(out)
+        return out
