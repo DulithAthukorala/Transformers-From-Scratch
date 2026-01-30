@@ -1,6 +1,6 @@
 # Transformer From Scratch (PyTorch)
 
-A pedagogical implementation of the Transformer architecture built from first principles, with a focus on understanding over abstraction.
+Implementation of the Transformer architecture built from Scratch, with a focus on understanding over abstraction.
 
 > **⚠️ Work in Progress**  
 > This project is in early development. Core components are being built incrementally.
@@ -42,10 +42,9 @@ This is a learning artifact, not a library.
 .
 ├── src/
 │   ├── attention.py          # Multi-head self-attention
+│   ├── transformer_blocks.py # Basic Transformer Block & Masked attention Block
 │   ├── encoder.py            # Encoder block and stack
 │   ├── decoder.py            # Decoder block and stack
-│   ├── positional_encoding.py
-│   ├── feedforward.py
 │   └── transformer.py        # Full model
 ├── notebooks/
 │   └── exploration.ipynb     # Step-by-step walkthroughs
@@ -63,10 +62,9 @@ This is a learning artifact, not a library.
 
 - **Python 3.10+**
 - **PyTorch 2.x** – tensor operations and autograd
-- **NumPy** – for manual implementations and comparisons
 - **Jupyter** – for exploratory notebooks
 - **pytest** – for component testing
-
+- **black** - for better code implementation
 ---
 
 ## Setup
