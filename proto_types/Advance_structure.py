@@ -26,43 +26,28 @@ class SelfAttention(nn.Module):  # Does the normal/masked Multi-Head Self-Attent
         But in cross attention, queries come from decoder, keys and values come from encoder, in order to handle that values, keys, queries are passed separately
 
         """
-        N = queries.shape[
-            0
-        ]  # (B, seq_length, embed_size) -> B (how many sequences we have in a batch)
-        value_len, key_len, query_len = (
-            values.shape[1],
-            keys.shape[1],
-            queries.shape[1],
-        )  # (B, seq_length, embed_size) -> seq_length
+        N = queries.shape[0]  # (B, seq_length, embed_size) -> B (how many sequences we have in a batch)
+        value_len, key_len, query_len = (values.shape[1], keys.shape[1], queries.shape[1],)  # (B, seq_length, embed_size) -> seq_length
 
         values = self.values(values)  # (N, value_len, embed_size)
         keys = self.keys(keys)  # (N, key_len, embed_size)
         queries = self.queries(queries)  # (N, query_len, embed_size
 
         # Split the embedding into self.heads different pieces
-        values = values.reshape(
-            N, value_len, self.heads, self.embedding_numbers_per_head
-        )
+        values = values.reshape(N, value_len, self.heads, self.embedding_numbers_per_head)
         keys = keys.reshape(N, key_len, self.heads, self.embedding_numbers_per_head)
-        queries = queries.reshape(
-            N, query_len, self.heads, self.embedding_numbers_per_head
-        )
+        queries = queries.reshape(N, query_len, self.heads, self.embedding_numbers_per_head)
 
-        energy = torch.einsum(
-            "nqhe,nkhe->nhqk", [queries, keys]
-        )  # Einstein summation for matrix multiplication
+        energy = torch.einsum("nqhe,nkhe->nhqk", [queries, keys])  
+        # Einstein summation for matrix multiplication
         # queries shape: (N, query_len, heads, embedding_numbers_per_head)
         # keys shape: (N, key_len, heads, embedding_numbers_per_head)
         # energy shape: (N, heads, query_len, key_len)
 
         if mask is not None:
-            energy = energy.masked_fill(
-                mask == 0, float("-1e20")
-            )  # fill masked positions with large negative value
+            energy = energy.masked_fill(mask == 0, float("-1e20"))  # fill masked positions with large negative value
 
-        attention = torch.softmax(
-            energy / (self.embed_size ** (1 / 2)), dim=3
-        )  # softmax along the last dimension (key_len)
+        attention = torch.softmax(energy / (self.embed_size ** (1 / 2)), dim=3)  # softmax along the last dimension (key_len)
 
         out = torch.einsum("nhql,nlhd->nqhd", [attention, values]).reshape(
             N, query_len, self.heads * self.embedding_numbers_per_head
@@ -94,15 +79,12 @@ class TransformerBlock(nn.Module):  # Attention + add & norm + feedforward + add
         # Attention
         attention = self.attention(value, key, query, mask)
         # Add & Norm
-        x = self.dropout(
-            self.norm1(attention + query)
-        )  # x = self.norm1(query + self.dropout(attention))
+        x = self.dropout(self.norm1(attention + query))  # x = self.norm1(query + self.dropout(attention))
         # Feed Forward
         forward = self.feed_forward(x)
         # Add & Norm
-        out = self.dropout(
-            self.norm2(forward + x)
-        )  # out = self.norm2(x + self.dropout(forward))
+        out = self.dropout(self.norm2(forward + x))  # out = self.norm2(x + self.dropout(forward))
+
         return out
 
 
@@ -121,12 +103,8 @@ class Encoder(nn.Module):
         super().__init__()
         self.embed_size = embed_size
         self.device = device
-        self.word_embedding = nn.Embedding(
-            src_vocab_size, embed_size
-        )  # create a lookup table for word embeddings (src_vocab_size, embed_size)
-        self.position_embedding = nn.Embedding(
-            max_length, embed_size
-        )  # position info for each token/word (max_length, embed_size) # use stat Q
+        self.word_embedding = nn.Embedding(src_vocab_size, embed_size)  # create a lookup table for word embeddings (src_vocab_size, embed_size)
+        self.position_embedding = nn.Embedding(max_length, embed_size)  # position info for each token/word (max_length, embed_size) # use stat Q
         self.layers = (
             nn.ModuleList(  # ModuleList = “tell PyTorch these are real layers”
                 [
@@ -145,9 +123,7 @@ class Encoder(nn.Module):
 
     def forward(self, x, mask):
         N, seq_length = x.shape
-        positions = (
-            torch.arange(0, seq_length).expand(N, seq_length).to(self.device)
-        )  # create position tensor
+        positions = (torch.arange(0, seq_length).expand(N, seq_length).to(self.device))  # create position tensor
 
         out = self.dropout(
             self.word_embedding(x) + self.position_embedding(positions)
