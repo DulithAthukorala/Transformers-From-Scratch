@@ -31,12 +31,18 @@ class TransformerBlock(nn.Module):
     def forward(self, value, key, query, mask=None, return_attention=False):
         # Pre-Norm variant (more stable version): LN -> sublayer -> residual
         if self.pre_norm:
-            q = self.norm1(query) # Only query is normalized because its added back as a residual
-            if return_attention:
-                attn_out, attn = self.attention(value, key, q, mask, return_attention=True)
+            q = self.norm1(query) 
+            if value.shape == query.shape and key.shape == query.shape:
+                v = q
+                k = q
             else:
-                attn_out = self.attention(value, key, q, mask)
-
+                v = value
+                k = key
+            if return_attention:
+                attn_out, attn = self.attention(v, k, q, mask, return_attention=True)
+            else:
+                attn_out = self.attention(v, k, q, mask)
+                
             # ADD & Norm
             x = query + self.dropout(attn_out)
             y = self.norm2(x)
