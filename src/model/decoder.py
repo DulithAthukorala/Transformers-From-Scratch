@@ -56,7 +56,7 @@ class Decoder(nn.Module):
         x = self.dropout(x)
 
         for layer in self.layers:
-            x = layer(x, enc_out, enc_out, src_mask, trg_mask)
+            x = layer(x, enc_out, enc_out, src_mask, trg_mask) # Output X is the query for cross-attention
 
         out = self.fc_out(x)
         return out
