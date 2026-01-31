@@ -8,7 +8,7 @@ from src.model.transformer_blocks import TransformerBlock
 class Encoder(nn.Module):
     def __init__(
         self,
-        src_vocab_size,
+        src_vocab_size, # Unique Tokens in source vocabulary
         embed_size,
         num_layers,
         heads,
@@ -23,8 +23,8 @@ class Encoder(nn.Module):
         self.embed_size = embed_size
         self.device = device
 
-        self.word_embedding = nn.Embedding(src_vocab_size, embed_size)
-        self.position_embedding = nn.Embedding(max_length, embed_size)
+        self.word_embedding = nn.Embedding(src_vocab_size, embed_size) # create a lookup table for word embeddings (src_vocab_size, embed_size)
+        self.position_embedding = nn.Embedding(max_length, embed_size) # position info for each token/word (max_length, embed_size)
 
         self.layers = nn.ModuleList(
             [
@@ -43,14 +43,14 @@ class Encoder(nn.Module):
 
     def forward(self, x, mask=None):
         if x.dim() != 2:
-            raise ValueError(f"Expected x shape (N, L). Got {tuple(x.shape)}")
+            raise ValueError(f"Expected x shape (N: batch size, L: sequence length). Got {tuple(x.shape)}")
 
         N, seq_length = x.shape
-        device = x.device
+        device = x.device # Locate the X tensor on(cpu or gpu)
 
         positions = torch.arange(0, seq_length, device=device).unsqueeze(0).expand(N, seq_length)
 
-        out = self.word_embedding(x) * math.sqrt(self.embed_size)
+        out = self.word_embedding(x) * math.sqrt(self.embed_size) # Make token embeddings big positional information doesn’t drown them out
         out = out + self.position_embedding(positions)
         out = self.dropout(out)
 
