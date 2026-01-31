@@ -1,6 +1,7 @@
 import random
 import torch
 import torch.nn as nn
+from torch.utils.tensorboard import SummaryWriter
 
 from src.model.transformer import Transformer
 
@@ -20,15 +21,11 @@ def token_accuracy(logits, targets, pad_id=0):
 
 
 def make_fixed_copy_dataset(train_size, seq_len, vocab_size, bos_id=1):
-    # src tokens in [2, vocab_size-1]
     src = torch.randint(2, vocab_size, (train_size, seq_len), dtype=torch.long)
-
     bos = torch.full((train_size, 1), bos_id, dtype=torch.long)
     trg_full = torch.cat([bos, src], dim=1)  # (train_size, seq_len+1)
-
-    trg_in = trg_full[:, :-1]   # (train_size, seq_len)
-    trg_out = trg_full[:, 1:]   # (train_size, seq_len)  == src
-
+    trg_in = trg_full[:, :-1]    # (train_size, seq_len)
+    trg_out = trg_full[:, 1:]    # (train_size, seq_len)
     return src, trg_in, trg_out
 
 
@@ -38,7 +35,9 @@ def main():
     device = "cuda" if torch.cuda.is_available() else "cpu"
     print("device:", device)
 
-    # --- Task settings (make it easy to memorize) ---
+    # TensorBoard writer (logs go into runs/copy_task/)
+    writer = SummaryWriter("runs/copy_task")
+
     vocab_size = 20
     pad_id = 0
     bos_id = 1
@@ -47,7 +46,6 @@ def main():
     train_size = 512
     batch_size = 256
 
-    # fixed dataset (THIS is what makes it an overfit proof)
     train_src, train_trg_in, train_trg_out = make_fixed_copy_dataset(
         train_size=train_size,
         seq_len=seq_len,
@@ -55,7 +53,6 @@ def main():
         bos_id=bos_id,
     )
 
-    # --- Model settings ---
     model = Transformer(
         src_vocab_size=vocab_size,
         trg_vocab_size=vocab_size,
@@ -96,10 +93,16 @@ def main():
         torch.nn.utils.clip_grad_norm_(model.parameters(), 1.0)
         optimizer.step()
 
+        acc = token_accuracy(logits, trg_out, pad_id=pad_id)
+
+        # TensorBoard logs (scalar curves)
+        writer.add_scalar("train/loss", loss.item(), step)
+        writer.add_scalar("train/token_acc", acc, step)
+
         if step % print_every == 0 or step == 1:
-            acc = token_accuracy(logits, trg_out, pad_id=pad_id)
             print(f"step {step:4d} | loss {loss.item():.4f} | token_acc {acc*100:.2f}%")
 
+    writer.close()
     print("done")
 
 

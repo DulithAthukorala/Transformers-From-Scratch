@@ -1,3 +1,4 @@
 torch>=2.2
 black>=24.0
 pytest>=7.0
+tensorboard
