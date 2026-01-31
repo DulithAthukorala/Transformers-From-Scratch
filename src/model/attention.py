@@ -1,7 +1,7 @@
 """
 This module implements a multi-head self-attention mechanism With and Without the Masking.
-Implemented in the Encoder as MultiHeadAttention block And
-In Decoder as MaskedMultiHeadAttention and Cross/MultiHeadAttention Blocks
+    - Implemented in the Encoder as MultiHeadAttention block And
+    - In Decoder as MaskedMultiHeadAttention and Cross/MultiHeadAttention Blocks
 """
 import torch
 import torch.nn as nn
@@ -70,8 +70,8 @@ class SelfAttention(nn.Module):
         attention = torch.softmax(energy / (self.head_dim ** 0.5), dim=-1)
         attention = self.attn_dropout(attention)
 
-        # out: (N, query_len, heads, head_dim)
-        out = torch.einsum("nhqk,nkhd->nqhd", attention, values)
+        # out: (N, len, heads, head_dim)
+        out = torch.einsum("nhqk,nvhd->nqhd", attention, values)
         out = out.reshape(N, query_len, self.heads * self.head_dim)
 
         out = self.fc_out(out)
