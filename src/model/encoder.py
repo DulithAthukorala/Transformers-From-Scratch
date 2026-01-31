@@ -1,3 +1,10 @@
+"""
+Encoder module consisting of multiple Transformer blocks.
+
+Input X -> word embedding + positional embedding -> dropout and then passed through several
+Transformer layers which do - >(Attention + ADD & Norm + Feed Forward + ADD & Norm)
+"""
+
 import math
 import torch
 import torch.nn as nn
