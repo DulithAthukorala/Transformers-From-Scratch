@@ -1,8 +1,35 @@
+# Python
 __pycache__/
 *.pyc
+*.pyo
+*.pyd
+
+# Environments
 .env
 .venv/
 venv/
-.ipynb_checkpoints/
+
+# ML artifacts
+*.pt
+*.pth
+*.ckpt
+checkpoints/
 runs/
+logs/
+tensorboard/
+wandb/
+mlruns/
+
+# Testing
+_pytest_cache/
+.coverage
+htmlcov/
+
+# Notebooks
+.ipynb_checkpoints/
+
+# OS / Editor
 .DS_Store
+Thumbs.db
+.vscode/
+.idea/
