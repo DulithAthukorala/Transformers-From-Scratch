@@ -32,12 +32,8 @@ class TransformerBlock(nn.Module):
         # Pre-Norm variant (more stable version): LN -> sublayer -> residual
         if self.pre_norm:
             q = self.norm1(query) 
-            if value.shape == query.shape and key.shape == query.shape:
-                v = q
-                k = q
-            else:
-                v = value
-                k = key
+            k = self.norm1(key)
+            v = self.norm1(value)
             if return_attention:
                 attn_out, attn = self.attention(v, k, q, mask, return_attention=True)
             else:
