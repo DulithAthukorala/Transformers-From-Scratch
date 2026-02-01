@@ -105,15 +105,15 @@ Processes the source sequence and creates contextualized representations.
 **Structure:**
 ```
 Input tokens
-    ↓
+  ↓
 Word Embeddings (lookup table)
-    ↓
+  ↓
 Positional Embeddings (position info)
-    ↓
+  ↓
 Dropout
-    ↓
+  ↓
 Stack of N Transformer Blocks (default: 6 layers)
-    ↓
+  ↓
 Contextualized output
 ```
 
@@ -132,19 +132,19 @@ Generates the target sequence one token at a time, attending to both its own pre
 **Structure:**
 ```
 Target tokens (shifted right)
-    ↓
+  ↓
 Word Embeddings
-    ↓
+  ↓
 Positional Embeddings
-    ↓
+  ↓
 Dropout
-    ↓
+  ↓
 Stack of N Decoder Blocks (default: 6 layers)
-    Each block performs:
-      1. Masked self-attention (causal)
-      2. Cross-attention with encoder output
-      3. Feedforward network
-    ↓
+  Each block performs:
+    1. Masked self-attention (causal)
+    2. Cross-attention with encoder output
+    3. Feedforward network
+  ↓
 Linear projection → Vocabulary logits
 ```
 
