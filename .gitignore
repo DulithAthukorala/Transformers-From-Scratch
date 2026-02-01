@@ -4,3 +4,5 @@ __pycache__/
 .venv/
 venv/
 .ipynb_checkpoints/
+runs/
+.DS_Store
