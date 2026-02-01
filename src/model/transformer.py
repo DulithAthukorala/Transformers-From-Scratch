@@ -19,6 +19,7 @@ class Transformer(nn.Module):
         dropout: float = 0.1,
         device="cpu",
         max_length: int = 100,
+        pre_norm: bool = True,
     ):
         super().__init__()
 
@@ -33,6 +34,7 @@ class Transformer(nn.Module):
             forward_expansion=forward_expansion,
             dropout=dropout,
             max_length=max_length,
+            pre_norm=pre_norm,
         )
 
         self.decoder = Decoder(
@@ -44,6 +46,7 @@ class Transformer(nn.Module):
             dropout=dropout,
             device=self.device,
             max_length=max_length,
+            pre_norm=pre_norm,
         )
 
         self.src_pad_idx = src_pad_idx
@@ -68,7 +71,7 @@ class Transformer(nn.Module):
 
     def forward(self, src: torch.Tensor, trg: torch.Tensor):
         if src.dim() != 2 or trg.dim() != 2:
-            raise ValueError(f"src and trg must be (N, L). Got src{tuple(src.shape)}, trg{tuple(trg.shape)}")
+            raise ValueError(f"source and target must be (N, L). Got source{tuple(src.shape)}, target{tuple(trg.shape)}")
 
         src = src.to(self.device)
         trg = trg.to(self.device)
@@ -76,6 +79,6 @@ class Transformer(nn.Module):
         src_mask = self.make_src_mask(src)  # bool mask
         trg_mask = self.make_trg_mask(trg)  # bool mask
 
-        enc_out = self.encoder(src, src_mask)
-        out = self.decoder(trg, enc_out, src_mask, trg_mask)
+        enc_out = self.encoder(src, src_mask) # Source X -> word + Positional Embedding -> Dropout -> Transformer Blocks(layers)
+        out = self.decoder(trg, enc_out, src_mask, trg_mask) # Target X -> word + Positional Embedding -> Dropout -> Decoder Blocks(layers)
         return out
