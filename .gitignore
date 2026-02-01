@@ -19,6 +19,7 @@ logs/
 tensorboard/
 wandb/
 mlruns/
+data/
 
 # Testing
 _pytest_cache/

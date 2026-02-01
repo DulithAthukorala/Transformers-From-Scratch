@@ -1,8 +1,12 @@
 import os
+import sys
 import random
 import torch
 import torch.nn as nn
 from torch.utils.tensorboard import SummaryWriter
+
+# Add the project root to sys.path to allow imports
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 from src.model.transformer import Transformer
 
