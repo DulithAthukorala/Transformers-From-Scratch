@@ -22,6 +22,9 @@ This is a learning tool, not a production library. If you want to understand wha
 git clone https://github.com/DulithAthukorala/Transformers-From-Scratch.git
 cd Transformers-From-Scratch
 
+# Install dependencies (optional but recommended: create a virtual environment first)
+pip install -r requirements.txt
+
 # Run the training script
 python scripts/transformer_overfit_proof.py
 ```
