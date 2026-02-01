@@ -35,6 +35,8 @@ Thumbs.db
 .idea/
 
 checkpoints/
+./Checkpoints/
+checkpoints/*.pt
 *.pt
 *.pth
 *.ckpt
