@@ -71,11 +71,10 @@ class SelfAttention(nn.Module):
         attention = self.attn_dropout(attention)
 
         # out: (N, len, heads, head_dim)
-        out = torch.einsum("nhqk,nvhd->nqhd", attention, values)
+        out = torch.einsum("nhqk,nkhd->nqhd", attention, values)  # (N, query_len, heads, head_dim)
         out = out.reshape(N, query_len, self.heads * self.head_dim)
-
+        
         out = self.fc_out(out)
-
         if return_attention: # For Development Purposes
             return out, attention
 
