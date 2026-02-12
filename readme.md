@@ -11,7 +11,6 @@ The Transformer architecture powers today's most advanced language models, yet i
 - **Demonstrates key concepts** – Multi-head attention, positional encoding, encoder-decoder architecture
 - **Includes a working training script** – See the model learn on a simple sequence copying task
 
-This is a learning tool, not a production library. If you want to understand what's really happening inside a Transformer, you're in the right place.
 
 ---
 
@@ -190,9 +189,8 @@ Target Sequence → Decoder → Output logits
 
 The `scripts/transformer_overfit_proof.py` demonstrates the model on a **sequence copying task**:
 
-**Task:** Given a random sequence of tokens, learn to reproduce it exactly.
 
-**Why This Task?**
+**Why This Approach?**
 - Simple enough to debug quickly
 - Complex enough to verify all components work
 - Perfect for validating attention mechanisms
@@ -211,7 +209,6 @@ The `scripts/transformer_overfit_proof.py` demonstrates the model on a **sequenc
 
 - Vaswani, A., et al. (2017). *Attention Is All You Need*. [arXiv:1706.03762](https://arxiv.org/abs/1706.03762)
 - [The Illustrated Transformer](https://jalammar.github.io/illustrated-transformer/) by Jay Alammar
-- [The Annotated Transformer](https://nlp.seas.harvard.edu/2018/04/03/attention.html) by Harvard NLP
 
 ---
 
